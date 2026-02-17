@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swing Hunter - Kurumsal Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body { background-color: #0f172a; color: #e2e8f0; }
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .score-high { color: #4ade80; }
+        .score-med { color: #facc15; }
+        .score-low { color: #f87171; }
+    </style>
+</head>
+<body class="font-sans antialiased">
+    <div id="app" class="container mx-auto p-6">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8 glass p-6 rounded-xl">
+            <div>
+                <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
+                    Swing Hunter Pro
+                </h1>
+                <p class="text-slate-400">Institutional Grade Scanner Dashboard</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="text-right">
+                    <div class="text-sm text-slate-400">Piyasa Durumu</div>
+                    <div class="font-bold text-green-400">AÇIK</div>
+                </div>
+                <div class="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center font-bold">
+                    SH
+                </div>
+            </div>
+        </header>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="glass p-6 rounded-xl">
+                <div class="text-slate-400 text-sm">Toplam Hisse</div>
+                <div class="text-2xl font-bold mt-1">{{ watchlist.length }}</div>
+            </div>
+            <div class="glass p-6 rounded-xl">
+                <div class="text-slate-400 text-sm">Giriş Sinyali</div>
+                <div class="text-2xl font-bold mt-1 text-green-400">{{ results.length }}</div>
+            </div>
+            <div class="glass p-6 rounded-xl">
+                <div class="text-slate-400 text-sm">Başarı Oranı (AI)</div>
+                <div class="text-2xl font-bold mt-1 text-blue-400">78%</div>
+            </div>
+            <div class="glass p-6 rounded-xl">
+                <div class="text-slate-400 text-sm">Sistem Durumu</div>
+                <div class="text-2xl font-bold mt-1 text-green-500" v-if="systemStatus === 'active'">Online</div>
+                <div class="text-2xl font-bold mt-1 text-yellow-500" v-else>Loading...</div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Watchlist / Scanner Controls -->
+            <div class="glass p-6 rounded-xl lg:col-span-1 h-fit">
+                <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                    <span>📡</span> Watchlist & Tarama
+                </h2>
+                
+                <div class="flex gap-2 mb-4">
+                    <button @click="startBatchScan" :disabled="scanning" 
+                        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition disabled:opacity-50">
+                        {{ scanning ? 'Taranıyor...' : 'Tümünü Tara' }}
+                    </button>
+                    <button @click="stopScan" v-if="scanning"
+                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition">
+                        Durdur
+                    </button>
+                </div>
+
+                <div class="max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                    <div v-for="symbol in watchlist" :key="symbol" 
+                        class="flex justify-between items-center p-3 mb-2 rounded bg-slate-800/50 hover:bg-slate-700 transition cursor-pointer"
+                        @click="analyzeSymbol(symbol)">
+                        <span class="font-bold">{{ symbol }}</span>
+                        <span class="text-xs bg-slate-700 px-2 py-1 rounded text-slate-300">İncele ></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Table -->
+            <div class="glass p-6 rounded-xl lg:col-span-2">
+                <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                    <span>⚡</span> Canlı Sonuçlar
+                </h2>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="text-slate-400 border-b border-slate-700">
+                                <th class="p-3">Sembol</th>
+                                <th class="p-3">Fiyat</th>
+                                <th class="p-3">Sinyal</th>
+                                <th class="p-3">Skor</th>
+                                <th class="p-3">AI Tahmini</th>
+                                <th class="p-3">R/R</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-if="results.length === 0" class="text-slate-500 text-center">
+                                <td colspan="6" class="p-8">Henüz sinyal bulunamadı. Taramayı başlatın.</td>
+                            </tr>
+                            <tr v-for="res in results" :key="res.Hisse" class="border-b border-slate-700/50 hover:bg-slate-700/30 transition">
+                                <td class="p-3 font-bold text-blue-400">{{ res.Hisse }}</td>
+                                <td class="p-3">{{ res.Fiyat }}</td>
+                                <td class="p-3">
+                                    <span class="px-2 py-1 rounded text-xs font-bold"
+                                        :class="res.Sinyal.includes('Güçlü') ? 'bg-green-900 text-green-300' : 'bg-yellow-900 text-yellow-300'">
+                                        {{ res.Sinyal }}
+                                    </span>
+                                </td>
+                                <td class="p-3 font-mono">{{ res.Skor }}</td>
+                                <td class="p-3 text-sm">
+                                    {{ res['YZ Tahmini'] || '-' }}
+                                </td>
+                                <td class="p-3 text-sm">{{ res['R/R'] }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Detail View (Simple) -->
+                <div v-if="currentAnalysis" class="mt-8 p-4 bg-slate-800 rounded-lg">
+                    <h3 class="font-bold text-lg mb-2">{{ currentAnalysis.Hisse }} Detayları</h3>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="text-slate-400">Stop Loss:</span> {{ currentAnalysis['Stop Loss'] }}
+                        </div>
+                        <div>
+                            <span class="text-slate-400">Hedef 1:</span> {{ currentAnalysis['Hedef 1'] }}
+                        </div>
+                         <div>
+                            <span class="text-slate-400">Onay:</span> {{ currentAnalysis['Onay'] || 'N/A' }}
+                        </div>
+                        <div>
+                            <span class="text-slate-400">Kalite:</span> {{ currentAnalysis['Efficiency'] || 'N/A' }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue
+
+        createApp({
+            data() {
+                return {
+                    systemStatus: 'initializing',
+                    watchlist: [],
+                    results: [],
+                    scanning: false,
+                    currentAnalysis: null
+                }
+            },
+            mounted() {
+                this.checkStatus();
+                this.loadWatchlist();
+            },
+            methods: {
+                async checkStatus() {
+                    try {
+                        const res = await axios.get('/api/status');
+                        this.systemStatus = res.data.status;
+                    } catch (e) {
+                        console.error("API Error", e);
+                    }
+                },
+                async loadWatchlist() {
+                    try {
+                        const res = await axios.get('/api/watchlist');
+                        this.watchlist = res.data || ['THYAO', 'ASELS', 'GARAN'];
+                    } catch (e) {
+                        this.watchlist = ['THYAO', 'ASELS', 'GARAN']; // Fallback
+                    }
+                },
+                async analyzeSymbol(symbol) {
+                    // Tekli analiz simülasyonu (veya gerçek call)
+                    // Gerçek uygulamada /api/scan/SYMBOL çağrılır
+                    try {
+                        const res = await axios.get(`/api/scan/${symbol}`);
+                        if (res.data && res.data.Hisse) { // Valid result check
+                             // Remove existing if any
+                            this.results = this.results.filter(r => r.Hisse !== symbol);
+                            this.results.unshift(res.data);
+                            this.currentAnalysis = res.data;
+                        } else {
+                            alert(`${symbol} için sinyal bulunamadı.`);
+                        }
+                    } catch (e) {
+                        alert(`Analiz hatası: ${e.message}`);
+                    }
+                },
+                async startBatchScan() {
+                    this.scanning = true;
+                    this.results = [];
+                    
+                    // Demo modu: Sırayla tek tek çağır (Gerçek batch API henüz yok)
+                    for (const symbol of this.watchlist.slice(0, 5)) { // İlk 5'i tara demo için
+                        if (!this.scanning) break;
+                        await this.analyzeSymbol(symbol);
+                    }
+                    this.scanning = false;
+                },
+                stopScan() {
+                    this.scanning = false;
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>

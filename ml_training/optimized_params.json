@@ -1,0 +1,12 @@
+{
+    "AAPL": {
+        "rsi_period": 27,
+        "macd_fast": 19,
+        "macd_slow": 34,
+        "macd_signal": 5,
+        "ema_fast": 11,
+        "ema_slow": 67,
+        "stop_loss_atr": 2.1705597645032406,
+        "take_profit_atr": 7.742419797911142
+    }
+}
