@@ -1,0 +1,37 @@
+# Chart Widget Requirements
+# Ana bağımlılıklar (ZORUNİ)
+PyQt5>=5.15.0
+pyqtgraph>=0.13.0
+numpy>=1.21.0
+pandas>=1.3.0
+TA-Lib>=0.4.24
+
+# Veri kaynakları (OPSİYONEL - en az biri gerekli)
+yfinance>=0.2.0          # Yahoo Finance veri kaynağı (ÖNERİLİR)
+tvdatafeed>=2.0.0        # TradingView veri kaynağı (ALTERNATİF)
+
+# Alternatif BIST veri kaynakları (OPSİYONEL v2.7.1+)
+borsapy>=0.0.1           # BIST analist verileri, KAP duyuruları
+tradingview-ta>=3.3.0    # TradingView sinyalleri (Strong Buy/Sell)
+finpy>=0.0.1             # IMKB resmi verileri (alternatif)
+requests>=2.25.0         # KAP.com API çağrıları
+
+# Cache sistemi için (ÖNERİLİR - güvenlik düzeltmesi)
+pyarrow>=10.0.0          # Parquet format desteği (pickle yerine)
+
+# Phase 1 additions - Watchlist & Analysis Quality
+SQLAlchemy>=2.0.25       # Database ORM for watchlist
+filterpy>=1.4.5          # Kalman filter for noise reduction
+scipy>=1.12.0            # Statistical tests and optimization
+
+# Not: 
+# - TA-Lib kurulumu için: https://github.com/TA-Lib/ta-lib-python
+# - Windows için: pip install TA_Lib-0.4.24-cp310-cp310-win_amd64.whl
+# - Alternatif BIST kaynakları isteğe bağlıdır (pip install borsapy finpy)
+
+
+
+# Phase 3 - Web Dashboard
+fastapi>=0.109.0
+uvicorn>=0.27.0
+python-multipart>=0.0.6
